@@ -1,0 +1,93 @@
+﻿@page "/machines"
+@using System.ComponentModel.DataAnnotations
+@using BlazorApp_IM_Park.Models
+@using BlazorApp_IM_Park.Services
+@inject MachineServices MachineService
+
+
+<h3>Machine Management</h3>
+
+@if (machines == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>MachineName</th>
+                <th>Guid ID</th>
+                <th>Status</th>
+                <th>LastUpdatedTime</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var machine in machines)
+            {
+                <tr>
+
+                    <td>@machine.MachineName</td>
+                    <td>@machine.Id</td>
+                    <td>@machine.Status</td>
+                    <td>@machine.LastUpdatedTime.ToShortDateString()</td>
+                    <td>
+                        <button class="btn btn-info" @onclick="() => ToggleStatus(machine.Id, machine.Status)">Set @(machine.Status == "Online" ? "Offline" : "Online")</button>
+                        <button class="btn btn-danger" @onclick="() => RemoveMachine(machine.Id)">Remove</button>
+                    </td>
+
+                </tr>
+            }
+        </tbody>
+    </table>
+    <input @bind="newMachineName" placeholder="New Machine Name" />
+    <button class="btn btn-primary" @onclick="async () => await AddMachine()">Add Machine</button>
+}
+
+@code {
+    private List<Machine>? machines;
+    private string newMachineName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("Entered to fetch all machines");
+        machines = await MachineService.GetMachinesAsync();
+    }
+
+    private async Task AddMachine()
+    {
+        Console.WriteLine("Entered add machine()");
+        if (!string.IsNullOrWhiteSpace(newMachineName))
+        {
+            var newMachine = new Machine
+                {
+                    MachineName = newMachineName,
+                    Id = Guid.NewGuid(),
+                    Status = "Offline",
+                    LastUpdatedTime = DateTime.Now
+                };
+            await MachineService.AddMachineAsync(newMachine);
+            machines = await MachineService.GetMachinesAsync();
+
+            newMachineName = string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleStatus(Guid id, string currentStatus)
+    {
+        Console.WriteLine($"ToggleStatus called for MachineId: {id}, CurrentStatus: {currentStatus}");
+        var newStatus = currentStatus == "Online" ? "Offline" : "Online";
+        await MachineService.UpdateMachineStatusAsync(id, newStatus);
+        machines = await MachineService.GetMachinesAsync();
+        StateHasChanged();
+    }
+
+    private async Task RemoveMachine(Guid id)
+    {
+        await MachineService.RemoveMachineAsync(id);
+        machines = await MachineService.GetMachinesAsync();
+        StateHasChanged();
+    }
+}
